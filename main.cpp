@@ -4,6 +4,7 @@
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
+#include <coordinates.h>
 
 
 std::pair<cv::Mat,cv::Mat> findCalibrationVariables(std::string path);
@@ -108,20 +109,40 @@ int main()
                 //////////// Here your code begins ///////////////////
                 //////////////////////////////////////////////////////
 
-                cv::Mat image_red = cv::Mat(openCvImage.rows, openCvImage.cols, openCvImage.type(), cv::Scalar( 0, 0, 0 ));
+                cv::Mat ball_ROI(openCvImage, cv::Rect(430,0,700, 880));
+                cv::Mat grey(ball_ROI.clone());
+                cv::cvtColor(ball_ROI, grey, cv::COLOR_BGR2GRAY);
 
-                for( int i = 0; i < openCvImage.cols; i++ ) {
-                    for( int j = 0; j < openCvImage.rows; j++ ) {
-                        if( openCvImage.at< cv::Vec3b >(j,i)[2]-(openCvImage.at< cv::Vec3b >(j,i)[1] + openCvImage.at< cv::Vec3b >(j,i)[0]) > 30  ) {
-                            image_red.at< cv::Vec3b >(j,i) = openCvImage.at< cv::Vec3b >(j,i);
-                        }
-                    }
+                std::vector<cv::Vec3f> circles;
+                cv::GaussianBlur(grey, grey, cv::Size(5,5), 0);
+                cv::HoughCircles(grey, circles, CV_HOUGH_GRADIENT, 2, 25, 300, 50, 15, 20);
+
+
+                for( size_t i = 0; i < circles.size(); i++ )
+                {
+                    cv::Vec3i c = circles[i];
+                    cv::Point center = cv::Point(c[0], c[1]);
+                    // circle center
+                    cv::circle( ball_ROI, center, 1, cv::Scalar(0,100,100), 3, cv::LINE_AA);
+                    // circle outline
+                    int radius = c[2];
+                    cv::circle( ball_ROI, center, radius, cv::Scalar(255,0,255), 3, cv::LINE_AA);
                 }
+
+//                cv::Mat image_red = cv::Mat(openCvImage.rows, openCvImage.cols, openCvImage.type(), cv::Scalar( 0, 0, 0 ));
+
+//                for( int i = 0; i < openCvImage.cols; i++ ) {
+//                    for( int j = 0; j < openCvImage.rows; j++ ) {
+//                        if( openCvImage.at< cv::Vec3b >(j,i)[2]-(openCvImage.at< cv::Vec3b >(j,i)[1] + openCvImage.at< cv::Vec3b >(j,i)[0]) > 30  ) {
+//                            image_red.at< cv::Vec3b >(j,i) = openCvImage.at< cv::Vec3b >(j,i);
+//                        }
+//                    }
+//                }
                 // Create an OpenCV display windo0w
                 cv::namedWindow( "myWindow", CV_WINDOW_NORMAL); // other options: CV_AUTOSIZE, CV_FREERATIO
 
                 // Display the current image in the OpenCV display window.
-                cv::imshow( "myWindow", openCvImage);
+                cv::imshow( "myWindow", ball_ROI);
 
                 // Detect key press and quit if 'q' is pressed
                 int keyPressed = cv::waitKey(1);
